@@ -1,4 +1,4 @@
-// scrapper.ts
+// scraper.ts
 
 import fetch from "node-fetch";
 import config from "../config/config";
@@ -143,7 +143,7 @@ export async function getUsersToEmail(limit: number = 100): Promise<User[]> {
     return db.all<User[]>(
       `SELECT id, username, full_name, email 
        FROM users 
-       WHERE is_sent = 0 AND email IS NOT NULL
+       WHERE status = 'pending' AND email IS NOT NULL
        LIMIT ?`,
       [limit]
     );
@@ -152,14 +152,64 @@ export async function getUsersToEmail(limit: number = 100): Promise<User[]> {
   }
 }
 
-export async function markAsSent(userIds: number[]) {
+export async function markAsSent(
+  userIds: number[],
+  messageId?: string
+) {
+  const db = await openDb();
+  try {
+    const placeholders = userIds.map(() => "?").join(",");
+    await db.run(
+      `UPDATE users 
+       SET is_sent = 1, 
+           status = 'sent', 
+           ses_message_id = ?,
+           sent_at = datetime('now'),
+           last_error = NULL
+       WHERE id IN (${placeholders})`,
+      [messageId || null, ...userIds]
+    );
+  } finally {
+    await db.close();
+  }
+}
+
+export async function markAsFailed(userId: number, error: string) {
   const db = await openDb();
   try {
     await db.run(
-      `UPDATE users SET is_sent = 1 WHERE id IN (${userIds
-        .map(() => "?")
-        .join(",")})`,
-      userIds
+      `UPDATE users SET status = 'failed', last_error = ? WHERE id = ?`,
+      [error, userId]
+    );
+  } finally {
+    await db.close();
+  }
+}
+
+export async function markAsBounced(
+  messageId: string,
+  bounceType: string
+) {
+  const db = await openDb();
+  try {
+    await db.run(
+      `UPDATE users 
+       SET status = 'bounced', 
+           bounce_type = ? 
+       WHERE ses_message_id = ?`,
+      [bounceType, messageId]
+    );
+  } finally {
+    await db.close();
+  }
+}
+
+export async function markAsComplained(messageId: string) {
+  const db = await openDb();
+  try {
+    await db.run(
+      `UPDATE users SET status = 'complained' WHERE ses_message_id = ?`,
+      [messageId]
     );
   } finally {
     await db.close();
@@ -181,7 +231,7 @@ export async function getNextUnemailedUser(): Promise<User | null | undefined> {
     return await db.get<User>(
       `SELECT * FROM users 
        WHERE (email IS NULL OR email = '') 
-       AND is_sent = 0 
+       AND status = 'pending' 
        AND (skip_count IS NULL OR skip_count < 2)
        ORDER BY created_at ASC
        LIMIT 1`

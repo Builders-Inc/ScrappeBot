@@ -3,6 +3,7 @@ import { cronSchedules } from "../config/config";
 import { scrapeLatestProjects, scrapeCommunityProjects } from "./scraper";
 import { sendBulkEmails } from "./emailSender";
 import { runCleanup } from "./cleanupService";
+import { outreachTemplate } from "../email/templates";
 
 export function setupSchedules() {
   // Schedule latest projects scrape (every 2 hours)
@@ -57,8 +58,8 @@ export function setupSchedules() {
       console.log("\n=== Starting scheduled email sending ===");
       try {
         const stats = await sendBulkEmails(
-          "Business(Artstation)",
-          getEmailTemplate()
+          "Your work on ArtStation",
+          outreachTemplate
         );
         console.log(
           `=== Email stats: ${stats.success} sent, ${stats.failures} failed ===`
@@ -75,14 +76,4 @@ export function setupSchedules() {
   console.log(`- Latest projects scrape: Every 2 hours`);
   console.log(`- Community projects scrape: Every 4 hours (at :30)`);
   console.log(`- Fallback email sending: Every 3 hours`);
-}
-
-function getEmailTemplate() {
-  return (user: any, senderName: any) => `
-    <p>Hello ${user.full_name},</p>
-    <p>I trust this message finds you in good health. I was quite taken with your artwork on ArtStation, especially admiring its originality and flair. I'm curious to know if any of the pieces are currently available for acquisition.</p>
-    <p>I await your reply with anticipation.</p>
-    <p>Best regards,<br>
-    ${senderName}</p>
-  `;
 }

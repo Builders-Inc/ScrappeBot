@@ -8,11 +8,16 @@ export default {
     accept:
       "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
   },
-  email: {
-    service: "gmail",
+  ses: {
+    region: process.env.AWS_REGION || "us-east-1",
+    fromEmail: process.env.SES_FROM_EMAIL || "grace@artreserve.org",
+    fromName: process.env.SES_FROM_NAME || "Grace Logan",
   },
   websocket: {
     port: 8080,
+  },
+  webhook: {
+    port: 3000,
   },
 };
 
@@ -24,7 +29,7 @@ export const cronSchedules = {
 };
 
 export const emailConfig = {
-  delayBetweenEmails: 10000,
+  delayBetweenEmails: 1100, // ~1 email/sec (SES production rate limit with margin)
   maxRetries: 3,
   dailyCleanupLimit: 500, // Max emails to send during cleanup
 };

@@ -21,6 +21,11 @@ export async function initDb() {
       is_pro_member INTEGER,
       email TEXT,
       is_sent INTEGER DEFAULT 0,
+      status TEXT DEFAULT 'pending',
+      ses_message_id TEXT,
+      sent_at TIMESTAMP,
+      last_error TEXT,
+      bounce_type TEXT,
       skip_count INTEGER DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       last_scraped_at TIMESTAMP,
@@ -33,6 +38,11 @@ export async function initDb() {
   const columnsToAdd = [
     { name: "processing", type: "INTEGER DEFAULT 0" },
     { name: "last_attempt", type: "TIMESTAMP" },
+    { name: "status", type: "TEXT DEFAULT 'pending'" },
+    { name: "ses_message_id", type: "TEXT" },
+    { name: "sent_at", type: "TIMESTAMP" },
+    { name: "last_error", type: "TEXT" },
+    { name: "bounce_type", type: "TEXT" },
   ];
 
   for (const column of columnsToAdd) {
@@ -46,6 +56,14 @@ export async function initDb() {
       }
     }
   }
+
+  // Migrate existing data: sync is_sent → status
+  await db.run(
+    `UPDATE users SET status = 'sent' WHERE is_sent = 1 AND (status IS NULL OR status = 'pending')`
+  );
+  await db.run(
+    `UPDATE users SET status = 'pending' WHERE is_sent = 0 AND email IS NOT NULL AND (status IS NULL OR status = 'pending')`
+  );
 
   // Prevent duplicate email addresses across rows
   try {
