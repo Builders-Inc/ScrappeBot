@@ -1,6 +1,16 @@
 import express, { Request, Response } from "express";
 import fetch from "node-fetch";
 import { markAsBounced, markAsComplained } from "./scraper";
+import config from "../config/config";
+
+function isSnsUrl(url: string): boolean {
+  try {
+    const { protocol, hostname } = new URL(url);
+    return protocol === "https:" && /^sns\.[a-z0-9-]+\.amazonaws\.com$/.test(hostname);
+  } catch {
+    return false;
+  }
+}
 
 /**
  * SNS Webhook handler for SES bounce/complaint notifications.
@@ -23,10 +33,21 @@ export function createSnsWebhookRouter(): express.Router {
         return;
       }
 
+      if (config.webhook.snsTopicArn && body.TopicArn !== config.webhook.snsTopicArn) {
+        console.warn(`Rejected SNS message from unexpected topic: ${body.TopicArn}`);
+        res.status(403).json({ error: "Unexpected topic" });
+        return;
+      }
+
       // Handle subscription confirmation
       if (messageType === "SubscriptionConfirmation") {
         console.log("Confirming SNS subscription...");
         const subscribeUrl = body.SubscribeURL;
+        if (subscribeUrl && !isSnsUrl(subscribeUrl)) {
+          console.warn(`Refusing to confirm non-SNS SubscribeURL: ${subscribeUrl}`);
+          res.status(400).json({ error: "Invalid SubscribeURL" });
+          return;
+        }
         if (subscribeUrl) {
           await fetch(subscribeUrl);
           console.log("SNS subscription confirmed");

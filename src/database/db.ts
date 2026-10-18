@@ -4,7 +4,7 @@ import path from "path";
 
 export async function openDb() {
   return open({
-    filename: path.join(__dirname, "../../artstation.db"),
+    filename: process.env.DB_PATH || path.join(__dirname, "../../artstation.db"),
     driver: sqlite3.Database,
   });
 }

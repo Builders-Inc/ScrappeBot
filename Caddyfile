@@ -1,0 +1,12 @@
+# Caddy obtains and renews the TLS certificate for $DOMAIN automatically.
+{$DOMAIN} {
+	# WebSocket upgrades (Chrome extension) go to the ws server
+	@websocket {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	reverse_proxy @websocket app:8080
+
+	# Everything else (SNS webhook, /health) goes to Express
+	reverse_proxy app:3000
+}

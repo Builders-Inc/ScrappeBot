@@ -14,10 +14,12 @@ export default {
     fromName: process.env.SES_FROM_NAME || "Grace Logan",
   },
   websocket: {
-    port: 8080,
+    port: Number(process.env.WS_PORT) || 8080,
+    token: process.env.WS_TOKEN || "", // if set, clients must connect with ?token=<WS_TOKEN>
   },
   webhook: {
-    port: 3000,
+    port: Number(process.env.PORT) || 3000,
+    snsTopicArn: process.env.SNS_TOPIC_ARN || "", // if set, only accept messages from this topic
   },
 };
 

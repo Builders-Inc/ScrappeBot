@@ -1,5 +1,6 @@
 // websocket.ts
 import { WebSocketServer, WebSocket } from "ws";
+import { IncomingMessage } from "http";
 import config from "../config/config";
 import {
   updateUserEmail,
@@ -29,7 +30,16 @@ export function setupWebSocketServer() {
     `WebSocket server running on ws://localhost:${config.websocket.port}`
   );
 
-  wss.on("connection", async (ws: CustomWebSocket) => {
+  wss.on("connection", async (ws: CustomWebSocket, req: IncomingMessage) => {
+    if (config.websocket.token) {
+      const token = new URL(req.url || "/", "http://localhost").searchParams.get("token");
+      if (token !== config.websocket.token) {
+        console.warn("Rejected WebSocket client with invalid token");
+        ws.close(1008, "Unauthorized");
+        return;
+      }
+    }
+
     console.log("New client connected");
     clientQueues.set(ws, []);
 
